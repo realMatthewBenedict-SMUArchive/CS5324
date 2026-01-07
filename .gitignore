@@ -1,2 +1,6 @@
 .*
 !.gitignore
+
+glove.6B.*
+**/*.keras
+**/*.keras.npy

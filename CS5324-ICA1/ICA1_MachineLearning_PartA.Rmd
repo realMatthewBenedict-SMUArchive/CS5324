@@ -1,0 +1,172 @@
+# In Class Assignment One
+In the following assignment you will be asked to fill in python code and derivations for a number of different problems.
+Please read all instructions carefully and turn in the rendered notebook (or HTML of the rendered notebook)
+before the end of class (or right after class). The initial portion of this notebook is given before class
+and the remainder is given during class. Please answer the initial questions before class, to the best of your ability.
+Once class has started you may rework your answers as a team for the initial part of the assignment. 
+
+<a id="top"></a>
+
+## Contents
+
+* <a href="#Loading">Loading the Data</a>
+* <a href="#linearnumpy">Linear Regression</a>
+* For in class session (not included here):
+* <a href="#sklearn">Using Scikit Learn for Regression</a>
+* <a href="#classification">Linear Classification</a>
+
+________________________________________________________________________________________________________
+
+<a id="Loading"></a>
+<a href="#top">Back to Top</a>
+
+## Loading the Data
+
+Please run the following code to read in the "diabetes" dataset from sklearn's data loading module. 
+
+This will load the data into the variable `ds`. `ds` is a `bunch` object with fields like `ds.data` and `ds.target`.
+The field `ds.data` is a numpy matrix of the continuous features in the dataset.
+**The object is not a pandas dataframe. It is a numpy matrix.**
+Each row is a set of observed instances, each column is a different feature.
+It also has a field called `ds.target` that is a continuous value we are trying to predict.
+Each entry in `ds.target` is a label for each row of the `ds.data` matrix. 
+
+The diabetes dataset was first used in the following paper:
+- http://statweb.stanford.edu/~imj/WEBLIST/2004/LarsAnnStat04.pdf
+
+```{r}
+library(reticulate)
+py_require("numpy")
+py_require("scikit-learn")
+```
+
+```{python}
+from sklearn.datasets import load_diabetes
+import numpy as np
+
+
+ds = load_diabetes()
+
+# this holds the continuous feature data
+# because ds.data is a matrix, there are some special properties we can access (like 'shape')
+# there are 442 instances and 10 features per instance
+print('features shape:', ds.data.shape, 'format is:', ('rows','columns'))
+print('range of target:', np.min(ds.target),np.max(ds.target))
+```
+
+```{python}
+from pprint import pprint
+
+# we can set the fields inside of ds and set them to new variables in python
+pprint(ds.data) # prints out elements of the matrix
+pprint(ds.target) # prints the vector (all 442 items)
+```
+
+________________________________________________________________________________________________________
+<a id="linearnumpy"></a>
+<a href="#top">Back to Top</a>
+
+## Using Linear Regression
+
+In the videos, we derived the formula for calculating the optimal values of the regression weights
+(you must be connected to the internet for this equation to show up properly):
+
+$$ w = (X^TX)^{-1}X^Ty $$
+
+where $X$ is the matrix of values with a bias column of ones appended onto it.
+For the diabetes dataset one could construct this $X$ matrix by stacking a column of ones onto the `ds.data` matrix. 
+
+$$ X=\begin{bmatrix}
+         & \vdots &        &  1 \\
+        \dotsb & \text{ds.data} & \dotsb &  \vdots\\
+         & \vdots &         &  1\\
+     \end{bmatrix}
+$$
+
+**Question 1:** For the diabetes dataset, how many elements will the vector $w$ contain?
+
+### Linear Regression Notes
+
+From video 0 min - 2 min
+* $y$ = ds.target (ranges from 1 to $m$)
+* $m$ = 442 (length of ds.target)
+* $x$ = ds.data (m vectors of length N)
+* $N$ (number of instances) = 10 (length of vectors in ds.data)
+* $w$ = unknown linear weights (length equal to $N$ = number of elements in each X)
+* Then $\hat{y}^{(i)} = w^{\top}x^{(i)}$
+
+From video 14 min - 20 min
+
+To be precise:
+* Suppose $\vec{y}$ is the column vector with $m = 442$ elements
+* Suppose $X$ is the matrix with each row vector $x^{(i)}$ is length $N = 10$, and it has $m = 442$ rows
+* Then $w = (X^TX)^{-1}X^Ty$
+
+From video 21 min - 31 min:
+
+* Unfortunately, $(X^TX)^{-1}$ may not exist.
+* In that case we can use gradient descent iteratively from some guess value $W_0$:
+$$ W -= \alpha \sum_{i} (y^{(i)} - w^{\top}x^{(i)})(x^{(i)}) $$
+* There are some techniques that add terms to this update function for different "flavors" of linear regression
+
+### Classification Notes
+
+* In the case of binary classification, we say $\hat{y}^{(i)} = g(w^{\top}x^{(i)})$
+such that the function $g$ always returns 0 or 1. One such example is:
+```python
+def g(theta): return 1 if theta >= 0 else 0
+```
+* This function is not strictly speaking differentiable. It can be represented as the Dirac delta function:
+$$\delta (x) = \begin{cases} 0, & x \neq 0 \\ {\infty} , & x = 0 \end{cases}, \int_{-\infty}^{\infty} \delta(x) dx=1$$
+
+From video 37 min - 45 min:
+
+* As a result, we'd like to find a $g$ with a more well-behaved derivative. One such example is a logistic curve:
+```python
+def g(theta): return 1 / (1 + np.exp(-theta))
+```
+* This time, the derivative is $g(\theta)(1 - g(\theta))$ which is well behaved.
+* Our update function this time is:
+$$ W_j -= \alpha \sum_{i} (y^{(i)} - w^{\top}x^{(i)})(x_j^{(i)})g(w^{\top}x^{(i)})(1 - g(w^{\top}x^{(i)})) $$
+* This is called "logistic regression" due to its similarity, but it is **not** a linear regression problem!
+
+```{python}
+m = ds.data.shape[0]
+N = ds.data.shape[1]
+y = ds.target
+# Add one for the bias term
+print(N + 1)
+```
+
+________________________________________________________________________________________________________
+
+**Exercise 1:** In the following empty cell, use the given equation above (using numpy matrix operations)
+to find the values of the optimal vector $w$. You will need to be sure $X$ and $y$ are created
+like the instructor talked about in the video. Don't forget to include any modifications to $X$ to account for the bias term in $w$.
+You might be interested in the following functions:
+
+- `import numpy as np`
+- `np.hstack((mat1,mat2))` stack two matrices horizontally, to create a new matrix
+- `np.ones((rows,cols))` create a matrix full of ones
+- `my_mat.T` takes transpose of numpy matrix named `my_mat`
+- `np.dot(mat1,mat2)` or `mat1 @ mat2` is matrix multiplication for two matrices
+- `np.linalg.inv(mat)` gets the inverse of the variable `mat`
+
+```{python}
+# Write you code here, print the values of the regression weights
+# using the 'print()' function in python
+import numpy as np
+
+def matrix_trans(matrix): return matrix.T
+def matrix_inv(matrix): return np.linalg.inv(matrix)
+
+# Add bias term to matrix and test
+bias = np.ones((m, 1))
+X = np.hstack((ds.data, bias))
+#pprint(X[0])
+
+# Then $w = (X^TX)^{-1}X^Ty$
+X_T = matrix_trans(X)
+w = matrix_inv(X_T @ X) @ X_T @ y
+print(w)
+```
